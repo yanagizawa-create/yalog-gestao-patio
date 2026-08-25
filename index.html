@@ -1357,24 +1357,31 @@ async function _tentarSSOHandoffPatio(){
   // do Ecosystem/WMS (nunca um projeto novo).
   const params = new URLSearchParams(window.location.search);
   const handoff = params.get(MODO_SSO.TOKEN_PARAM);
-  if(!handoff) return 'no-handoff';
+  if(!handoff){ console.log('[SSO DEBUG 08] handoff recebido: nenhum (nenhum ?handoff= na URL)'); return 'no-handoff'; }
+  console.log('[SSO DEBUG 08] handoff recebido:', handoff.slice(0,8)+'…'); // nunca o token completo
   try{
     if(typeof window.supabaseClient === 'undefined' || !window.supabaseClient){
-      console.error('[SSO ERROR] handoff presente na URL, mas o cliente Supabase não pôde ser inicializado (SDK não carregou ou URL/chave ausentes).');
+      console.error('[SSO PATIO ERROR] handoff presente na URL, mas o cliente Supabase não pôde ser inicializado (SDK não carregou ou URL/chave ausentes).');
       return 'failed';
     }
+    console.log('[SSO DEBUG 09] chamando validar_handoff_modulo...');
     const {data,error} = await window.supabaseClient.rpc('validar_handoff_modulo',{p_token:handoff});
-    if(error){ console.error('[SSO ERROR]', error); return 'failed'; }
+    if(error){ console.error('[SSO PATIO ERROR] validar_handoff_modulo retornou erro:', {code:error.code, message:error.message, details:error.details, hint:error.hint}); return 'failed'; }
     const identidade = Array.isArray(data)?(data[0]||null):data;
-    if(!identidade || !identidade.module_session_token){ console.error('[SSO ERROR] handoff recusado pelo servidor.'); return 'failed'; }
+    if(!identidade || !identidade.module_session_token){ console.error('[SSO PATIO ERROR] handoff recusado pelo servidor (sem identidade ou sem module_session_token no retorno).', data); return 'failed'; }
+    console.log('[SSO DEBUG 10] identidade recebida — company_id:', identidade.company_id, '| login:', identidade.login, '| perfil:', identidade.perfil);
+    // item 12: remove o token da barra de endereço assim que validado
+    // com sucesso — nunca fica exposto na URL depois da autenticação.
     try{ window.history.replaceState({},document.title, window.location.origin+window.location.pathname); }catch(e){}
     sessaoModulo = {
       company_id: identidade.company_id, login: identidade.login,
       nome: identidade.nome, perfil: identidade.perfil,
       module_session_token: identidade.module_session_token, _dev:false,
     };
+    console.log('[SSO DEBUG 11] sessão do módulo criada:', {company_id: sessaoModulo.company_id, login: sessaoModulo.login});
+    console.log('[SSO DEBUG 12] SSO concluído.');
     return 'success';
-  }catch(e){ console.error('[SSO ERROR]', e); return 'failed'; }
+  }catch(e){ console.error('[SSO PATIO ERROR] erro inesperado ao validar handoff:', e); return 'failed'; }
 }
 
 async function iniciarSessaoModulo(){
@@ -3531,8 +3538,10 @@ function showToast(msg,type=''){
 // Clock
 function updateClock(){
   const now=new Date();
-  document.getElementById('topbarClock').textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  document.getElementById('topbarDate').textContent=now.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  const clock=document.getElementById('topbarClock');
+  const date=document.getElementById('topbarDate');
+  if(clock) clock.textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  if(date) date.textContent=now.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 }
 setInterval(updateClock,1000); updateClock();
 
