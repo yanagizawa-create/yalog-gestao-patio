@@ -312,32 +312,33 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
     <div class="nav-item active" onclick="goTo('home')"><span class="nav-icon">⬡</span>Painel Geral</div>
 
     <div class="nav-section-label">Agenda</div>
-    <div class="nav-item" onclick="goTo('agenda')"><span class="nav-icon">▤</span>Agenda de Operações<span class="nav-badge" id="badgeAgendaHoje">0</span></div>
-    <div class="nav-item" onclick="goTo('portaria')"><span class="nav-icon">▣</span>Agenda da Portaria</div>
+    <div class="nav-item" id="navAgenda" onclick="goTo('agenda')"><span class="nav-icon">▤</span>Agenda de Operações<span class="nav-badge" id="badgeAgendaHoje">0</span></div>
+    <div class="nav-item" id="navPortaria" onclick="goTo('portaria')"><span class="nav-icon">▣</span>Agenda da Portaria</div>
 
     <div class="nav-section-label">Pátio</div>
-    <div class="nav-item" onclick="goTo('patio')"><span class="nav-icon">◉</span>Pátio em Tempo Real<span class="nav-badge" id="badgePatio">0</span></div>
+    <div class="nav-item" id="navPatio" onclick="goTo('patio')"><span class="nav-icon">◉</span>Pátio em Tempo Real<span class="nav-badge" id="badgePatio">0</span></div>
 
     <div class="nav-section-label">Entrada</div>
-    <div class="nav-item" onclick="goTo('novaEntrada')"><span class="nav-icon">↓</span>Nova Entrada</div>
-    <div class="nav-item" onclick="goTo('listaEntradas')"><span class="nav-icon">☰</span>Todas as Entradas<span class="nav-badge" id="badgeEntradas">0</span></div>
+    <div class="nav-item" id="navNovaEntrada" onclick="goTo('novaEntrada')"><span class="nav-icon">↓</span>Nova Entrada</div>
+    <div class="nav-item" id="navListaEntradas" onclick="goTo('listaEntradas')"><span class="nav-icon">☰</span>Todas as Entradas<span class="nav-badge" id="badgeEntradas">0</span></div>
 
     <div class="nav-section-label">Saída</div>
-    <div class="nav-item" onclick="goTo('novaSaida')"><span class="nav-icon">↑</span>Registrar Saída</div>
-    <div class="nav-item" onclick="goTo('listaSaidas')"><span class="nav-icon">☰</span>Todas as Saídas</div>
+    <div class="nav-item" id="navNovaSaida" onclick="goTo('novaSaida')"><span class="nav-icon">↑</span>Registrar Saída</div>
+    <div class="nav-item" id="navListaSaidas" onclick="goTo('listaSaidas')"><span class="nav-icon">☰</span>Todas as Saídas</div>
 
     <div class="nav-section-label">Carga / Expedição</div>
-    <div class="nav-item" onclick="goTo('novoRomaneio')"><span class="nav-icon">✦</span>Novo Romaneio<span class="nav-badge" id="badgeRomaneio">0</span></div>
-    <div class="nav-item" onclick="goTo('listaRomaneios')"><span class="nav-icon">◈</span>Romaneios</div>
+    <div class="nav-item" id="navNovoRomaneio" onclick="goTo('novoRomaneio')"><span class="nav-icon">✦</span>Novo Romaneio<span class="nav-badge" id="badgeRomaneio">0</span></div>
+    <div class="nav-item" id="navListaRomaneios" onclick="goTo('listaRomaneios')"><span class="nav-icon">◈</span>Romaneios</div>
 
     <div class="nav-section-label">Dados</div>
     <div class="nav-item" onclick="goTo('relatorios')"><span class="nav-icon">◇</span>Relatórios</div>
     <div class="nav-item" onclick="exportCSV()"><span class="nav-icon">↓</span>Exportar CSV</div>
 
     <div class="nav-section-label">Configuração</div>
-    <div class="nav-item" onclick="goTo('configRecursos')"><span class="nav-icon">⚙</span>Recursos Operacionais</div>
-    <div class="nav-item" onclick="goTo('auditoria')"><span class="nav-icon">📜</span>Histórico / Auditoria</div>
-    <div class="nav-item" onclick="abrirModalLimpeza()"><span class="nav-icon">🧹</span>Limpeza de Dados</div>
+    <div class="nav-item" id="navConfigRecursos" onclick="goTo('configRecursos')"><span class="nav-icon">⚙</span>Recursos Operacionais</div>
+    <div class="nav-item" id="navAuditoria" onclick="goTo('auditoria')"><span class="nav-icon">📜</span>Histórico / Auditoria</div>
+    <div class="nav-item" id="navUsuariosPermissoes" onclick="goTo('usuariosPermissoes')"><span class="nav-icon">👥</span>Usuários e Permissões</div>
+    <div class="nav-item" id="navLimpezaDados" onclick="abrirModalLimpeza()"><span class="nav-icon">🧹</span>Limpeza de Dados</div>
   </nav>
   <div class="sidebar-footer">
     <div class="sf-logo-row">
@@ -468,7 +469,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
           <button class="btn btn-outline btn-sm" onclick="setAtalhoAgenda('7dias')" id="atalho7Dias">7 dias</button>
           <button class="btn btn-outline btn-sm" onclick="setAtalhoAgenda('30dias')" id="atalho30Dias">30 dias</button>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalAgendamento()">+ Novo Agendamento</button>
+        <button class="btn btn-primary btn-sm" id="btnNovoAgendamento" onclick="abrirModalAgendamento()">+ Novo Agendamento</button>
       </div>
 
       <div class="form-section" style="margin-bottom:16px;">
@@ -929,7 +930,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
 
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
         <button class="btn btn-primary" id="btnSalvarRomaneio" onclick="salvarRomaneio()">✦ Salvar Romaneio</button>
-        <button class="btn btn-print" onclick="salvarEImprimirRomaneio()">🖨️ Salvar e Imprimir</button>
+        <button class="btn btn-print" id="btnSalvarImprimirRomaneio" onclick="salvarEImprimirRomaneio()">🖨️ Salvar e Imprimir</button>
         <button class="btn btn-outline" onclick="limparRomaneio()">Limpar</button>
       </div>
     </div>
@@ -983,7 +984,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
       <div class="page-eyebrow">Configuração Operacional</div>
       <div class="page-title">Recursos <em>Operacionais</em></div>
       <div class="page-sub">Docas e áreas operacionais — cadastro central que alimenta todo o módulo</div>
-      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="acoesConfigRecursos">
         <button class="btn btn-primary btn-sm" onclick="abrirModalRecurso('DOCA')">+ Nova Doca</button>
         <button class="btn btn-blue btn-sm" onclick="abrirModalRecurso('AREA_OPERACIONAL')">+ Nova Área Operacional</button>
       </div>
@@ -1064,6 +1065,73 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-outline btn-sm" onclick="closeModal('modalLimpeza')">Cancelar</button>
           <button class="btn btn-danger btn-sm" id="btnConfirmarLimpeza" onclick="executarLimpezaConfirmada()">Confirmar Limpeza</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ USUÁRIOS E PERMISSÕES (SPRINT PATIO-003) ══════ -->
+    <div class="page" id="p-usuariosPermissoes">
+      <div class="page-eyebrow">Governança</div>
+      <div class="page-title">Usuários e <em>Permissões</em></div>
+      <div class="page-sub">Cadastro de usuários da empresa e controle de acesso por recurso</div>
+      <div id="upSemPermissao" style="display:none;" class="empty-state"><div class="empty-icon">🔒</div><div class="empty-text">Seu perfil não tem permissão para gerenciar usuários.</div></div>
+      <div id="upConteudo">
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <button class="btn btn-primary btn-sm" id="btnNovoUsuario" onclick="abrirModalUsuario()">+ Novo Usuário</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="usuariosBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ MODAL USUÁRIO (criar/editar) ══════ -->
+    <div class="modal-overlay" id="modalUsuario">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal('modalUsuario')">✕</button>
+        <div class="modal-title" id="modalUsuarioTitulo">Novo Usuário</div>
+        <div class="modal-sub">A autenticação continua sendo feita pelo YALog Ecosystem — aqui só o cadastro e o perfil dentro do Pátio.</div>
+        <input type="hidden" id="usLoginOriginal">
+        <div class="form-group"><label>Nome <span class="required">*</span></label><input type="text" id="usNome" placeholder="Nome completo"></div>
+        <div class="form-group"><label>Login <span class="required">*</span></label><input type="text" id="usLogin" placeholder="login.usuario"></div>
+        <div class="form-group"><label>E-mail</label><input type="email" id="usEmail" placeholder="usuario@empresa.com"></div>
+        <div class="form-group"><label>Perfil <span class="required">*</span></label>
+          <select id="usPerfil">
+            <option value="MASTER">MASTER</option>
+            <option value="LIDERANCA">LIDERANÇA</option>
+            <option value="ANALISTA">ANALISTA</option>
+            <option value="USUARIO">USUÁRIO</option>
+          </select>
+        </div>
+        <div class="form-group" id="usAtivoWrap" style="display:none;">
+          <label>Status</label>
+          <select id="usAtivo"><option value="true">Ativo</option><option value="false">Inativo</option></select>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-outline btn-sm" onclick="closeModal('modalUsuario')">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="btnSalvarUsuario" onclick="salvarUsuario()">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ MODAL PERMISSÕES (matriz por recurso) ══════ -->
+    <div class="modal-overlay" id="modalPermissoes">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal('modalPermissoes')">✕</button>
+        <div class="modal-title">Permissões — <span id="modalPermissoesUsuario"></span></div>
+        <div class="modal-sub">Sobrescreve, recurso por recurso, o padrão do perfil. Sem seleção aqui, vale o padrão.</div>
+        <input type="hidden" id="permLoginAlvo">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Recurso</th><th style="text-align:center;">Sem Acesso</th><th style="text-align:center;">Visualizar</th><th style="text-align:center;">Executar</th></tr></thead>
+            <tbody id="permissoesBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-outline btn-sm" onclick="closeModal('modalPermissoes')">Fechar</button>
         </div>
       </div>
     </div>
@@ -1541,6 +1609,57 @@ const Core = {
     if(error) throw error;
     return data||[];
   },
+
+  // ═══ SPRINT YALOG-PATIO-003 — usuários e permissões granulares ═══
+  async permissoesObter(loginAlvo){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_permissoes_obter', {
+      p_session_token: sessaoModulo.module_session_token, p_login_alvo: loginAlvo||null,
+    });
+    if(error) throw error;
+    return data||[];
+  },
+  async verificarAcesso(recurso, nivelMinimo){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_verificar_acesso', {
+      p_session_token: sessaoModulo.module_session_token, p_recurso: recurso, p_nivel_minimo: nivelMinimo||'EXECUTAR',
+    });
+    if(error) throw error;
+    return !!data;
+  },
+  async permissoesDefinir(loginAlvo, recurso, nivel){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_permissoes_definir', {
+      p_session_token: sessaoModulo.module_session_token, p_login_alvo: loginAlvo, p_recurso: recurso, p_nivel: nivel,
+    });
+    if(error) throw error;
+    return !!data;
+  },
+  async usuariosListar(){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_usuarios_listar', {
+      p_session_token: sessaoModulo.module_session_token,
+    });
+    if(error) throw error;
+    return data||[];
+  },
+  async usuariosCriar(login, nome, email, perfil){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_usuarios_criar', {
+      p_session_token: sessaoModulo.module_session_token, p_login: login, p_nome: nome, p_email: email, p_perfil: perfil,
+    });
+    if(error) throw error;
+    return !!data;
+  },
+  async usuariosEditar(loginAlvo, nome, email, perfil, ativo){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_usuarios_editar', {
+      p_session_token: sessaoModulo.module_session_token, p_login_alvo: loginAlvo,
+      p_nome: nome, p_email: email, p_perfil: perfil, p_ativo: ativo,
+    });
+    if(error) throw error;
+    return !!data;
+  },
 };
 
 // item 21: proteção contra duplo clique — desabilita o botão durante
@@ -1656,11 +1775,13 @@ function userIdAtual(){ return (sessaoModulo && sessaoModulo.login) || 'local'; 
 // item 7 (testes 4-7): permite trocar o perfil simulado em modo de
 // teste local, sem precisar de SSO real — só existe quando
 // sessaoModulo._dev é true (nunca em produção via handoff).
-function definirPerfilTeste(p){
+async function definirPerfilTeste(p){
   if(!PERFIS_VALIDOS.includes(p)) return;
   DB.config=DB.config||{};
   DB.config.perfilTeste=p;
   saveDB();
+  await carregarPermissoesOnline();
+  aplicarGatesDeInterface();
   showToast('Perfil de teste: '+p,'success');
   // Re-renderiza a tela atual para refletir a nova permissão imediatamente.
   const paginaAtual=document.querySelector('.page.on');
@@ -1682,6 +1803,113 @@ function canPerformAction(action, profile){
   if(!matriz) return false;
   const chave=_ACAO_PARA_CHAVE_PERMISSAO[action]||action;
   return !!matriz[chave];
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SPRINT YALOG-PATIO-003 — PERMISSÕES GRANULARES POR RECURSO
+// ═══════════════════════════════════════════════════════════════
+// item 16: evolução ADITIVA — MATRIZ_PERMISSOES/canPerformAction()
+// acima continuam intactas e em uso (ações administrativas globais:
+// excluir/limpar/restaurar/ver auditoria). Esta camada nova resolve
+// "recurso × nível" (SEM_ACESSO/VISUALIZAR/EXECUTAR), usada para: (a)
+// bloquear PÁGINAS inteiras (item 6/TESTE 7), (b) ser a fonte que a
+// tela de Permissões edita, (c) espelhar client-side, em modo dev, a
+// mesma regra que as RPCs aplicam no servidor — nunca a autoridade
+// real (essa é sempre o backend, item 12/TESTE 8).
+const RECURSOS_PATIO=[
+  {chave:'home', nome:'Painel Geral'},
+  {chave:'entradas', nome:'Entradas / Carga / Descarga'},
+  {chave:'agendamentos', nome:'Agendamentos'},
+  {chave:'romaneios', nome:'Romaneios'},
+  {chave:'veiculos', nome:'Veículos'},
+  {chave:'motoristas', nome:'Motoristas'},
+  {chave:'auditoria', nome:'Histórico / Auditoria'},
+  {chave:'recursos', nome:'Recursos / Docas'},
+  {chave:'configuracoes', nome:'Configurações'},
+  {chave:'usuarios', nome:'Usuários e Permissões'},
+];
+const NIVEL_ORDEM={SEM_ACESSO:0, VISUALIZAR:1, EXECUTAR:2};
+function nivelAtende(nivelAtual, nivelMinimo){
+  return (NIVEL_ORDEM[nivelAtual]||0) >= (NIVEL_ORDEM[nivelMinimo]||0);
+}
+// item 16 (mesmo espírito do mapeamento feito em SQL,
+// _patio_permissao_padrao — replicado aqui só pro modo de teste
+// local/dev, nunca como autoridade real).
+function permissaoPadraoPerfil(perfil, recurso){
+  if(perfil==='MASTER'||perfil==='LIDERANCA') return 'EXECUTAR';
+  const mapaAnalista={home:'VISUALIZAR',entradas:'EXECUTAR',agendamentos:'EXECUTAR',romaneios:'EXECUTAR',veiculos:'EXECUTAR',motoristas:'EXECUTAR',auditoria:'VISUALIZAR',recursos:'SEM_ACESSO',configuracoes:'SEM_ACESSO',usuarios:'SEM_ACESSO'};
+  const mapaUsuario={home:'VISUALIZAR',entradas:'EXECUTAR',agendamentos:'EXECUTAR',romaneios:'EXECUTAR',veiculos:'EXECUTAR',motoristas:'EXECUTAR',auditoria:'SEM_ACESSO',recursos:'SEM_ACESSO',configuracoes:'SEM_ACESSO',usuarios:'SEM_ACESSO'};
+  if(perfil==='ANALISTA') return mapaAnalista[recurso]||'SEM_ACESSO';
+  if(perfil==='USUARIO') return mapaUsuario[recurso]||'SEM_ACESSO';
+  return 'SEM_ACESSO';
+}
+
+// Cache das permissões EFETIVAS do usuário atual (padrão + overrides
+// já resolvidos), recarregado no boot e sempre que o perfil de teste
+// muda. Nunca a autoridade — só evita esperar uma RPC a cada clique
+// de menu; a autoridade real é sempre patio_verificar_acesso() no
+// servidor (já embutida em patio_upsert/soft_delete/restore).
+let PERMISSOES_EFETIVAS={};
+async function carregarPermissoesOnline(){
+  if(Core.ONLINE_DISPONIVEL()){
+    try{
+      const linhas=await Core.permissoesObter();
+      const mapa={};
+      linhas.forEach(l=>{ mapa[l.recurso]=l.nivel; });
+      PERMISSOES_EFETIVAS=mapa;
+      return true;
+    }catch(e){
+      console.error('[carregarPermissoesOnline]', e);
+      // Falha ao carregar -> nunca assume acesso liberado por omissão.
+      PERMISSOES_EFETIVAS={};
+      return false;
+    }
+  }
+  // modo de teste local: replica a matriz padrão do perfil de teste
+  // selecionado, sem overrides (não há RPC pra consultar).
+  const perfil=perfilAtual();
+  const mapa={};
+  RECURSOS_PATIO.forEach(r=>{ mapa[r.chave]=permissaoPadraoPerfil(perfil, r.chave); });
+  PERMISSOES_EFETIVAS=mapa;
+  return true;
+}
+function temAcessoRecurso(recurso, nivelMinimo){
+  return nivelAtende(PERMISSOES_EFETIVAS[recurso]||'SEM_ACESSO', nivelMinimo||'VISUALIZAR');
+}
+
+// item 17 (Sprint 003-R1): API central pedida explicitamente — nenhuma
+// tela deve reimplementar essa lógica por conta própria.
+function getNivelPermissao(recurso){
+  return PERMISSOES_EFETIVAS[recurso]||'SEM_ACESSO';
+}
+function temAcessoPagina(recurso){ return temAcessoRecurso(recurso,'VISUALIZAR'); }
+function podeVisualizar(recurso){ return temAcessoRecurso(recurso,'VISUALIZAR'); }
+function podeExecutar(recurso){ return temAcessoRecurso(recurso,'EXECUTAR'); }
+
+// item 6/17/18 (Sprint 003-R1): fonte única que decide o que aparece
+// no menu — OCULTAR esconde o item por completo (não é só o gate de
+// goTo(), que bloqueia navegação; o item nem deve aparecer clicável).
+function aplicarGatesDeInterface(){
+  const NAV_VISUALIZAR={
+    navAgenda:'agendamentos', navPortaria:'agendamentos',
+    navPatio:'entradas', navListaEntradas:'entradas', navListaSaidas:'entradas',
+    navListaRomaneios:'romaneios',
+    navConfigRecursos:'recursos',
+    navAuditoria:'auditoria',
+    navUsuariosPermissoes:'usuarios',
+  };
+  Object.entries(NAV_VISUALIZAR).forEach(([id,recurso])=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display = podeVisualizar(recurso) ? '' : 'none';
+  });
+
+  // item 7/11: atalhos de CRIAÇÃO no menu só aparecem com EXECUTAR —
+  // com só VISUALIZAR, a lista continua acessível, o atalho de criar não.
+  const NAV_EXECUTAR={ navNovaEntrada:'entradas', navNovaSaida:'entradas', navNovoRomaneio:'romaneios' };
+  Object.entries(NAV_EXECUTAR).forEach(([id,recurso])=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display = podeExecutar(recurso) ? '' : 'none';
+  });
 }
 
 // ═══════════════════════════════════════════════════
@@ -1804,9 +2032,9 @@ async function renderAuditoria(){
     // cuja entidade continua excluída), oferece a ação direto na linha.
     let acaoRestaurar='';
     if(a.action==='DELETE' && canPerformAction('RESTORE')){
-      if(a.entity==='Entrada' && DB.entradas.find(e=>e.id===a.entityId && e.deletedAt)){
+      if(a.entity==='Entrada' && podeExecutar('entradas') && DB.entradas.find(e=>e.id===a.entityId && e.deletedAt)){
         acaoRestaurar=`<button class="btn btn-outline btn-sm" onclick="restaurarEntrada('${a.entityId}')">Restaurar</button>`;
-      }else if(a.entity==='Agendamento' && DB.agendamentos.find(x=>x.id===a.entityId && x.deletedAt)){
+      }else if(a.entity==='Agendamento' && podeExecutar('agendamentos') && DB.agendamentos.find(x=>x.id===a.entityId && x.deletedAt)){
         acaoRestaurar=`<button class="btn btn-outline btn-sm" onclick="restaurarAgendamento('${a.entityId}')">Restaurar</button>`;
       }
     }
@@ -1823,8 +2051,164 @@ async function renderAuditoria(){
   }).join('');
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  SPRINT YALOG-PATIO-003 — USUÁRIOS E PERMISSÕES
+// ═══════════════════════════════════════════════════════════════
+let _usuariosCache=[];
+
+// item 4/13: lista só MASTER/LIDERANÇA (a página já é bloqueada por
+// SEM_ACESSO pra outros perfis, mas a checagem aqui é a segunda
+// camada — nunca confia só no gate de goTo()).
+async function renderUsuariosPermissoes(){
+  const semPermEl=document.getElementById('upSemPermissao');
+  const conteudoEl=document.getElementById('upConteudo');
+  // item 15: a matriz configurada pro usuário determina a experiência,
+  // não mais um hardcode de perfil — um override individual (ex.:
+  // ANALISTA com 'usuarios'=VISUALIZAR) agora é respeitado de verdade.
+  if(!podeVisualizar('usuarios')){
+    semPermEl.style.display='block'; conteudoEl.style.display='none';
+    return;
+  }
+  semPermEl.style.display='none'; conteudoEl.style.display='block';
+  const btnNovo=document.getElementById('btnNovoUsuario');
+  if(btnNovo) btnNovo.style.display = podeExecutar('usuarios') ? '' : 'none';
+
+  const tbody=document.getElementById('usuariosBody');
+  if(!Core.ONLINE_DISPONIVEL()){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--w30);padding:24px;">Sem sessão online — cadastro de usuários exige conexão com o YALog.</td></tr>';
+    return;
+  }
+  tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--w30);padding:24px;">Carregando<span class="loading-dots"></span></td></tr>';
+  try{
+    _usuariosCache=await Core.usuariosListar();
+  }catch(e){
+    console.error('[renderUsuariosPermissoes]', e);
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#f87171;padding:24px;">Não foi possível carregar os usuários. Verifique a conexão.</td></tr>';
+    return;
+  }
+  if(!_usuariosCache.length){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--w30);padding:24px;">Nenhum usuário cadastrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=_usuariosCache.map(u=>`
+    <tr>
+      <td>${u.nome}</td>
+      <td style="font-family:var(--mono);font-size:12px;">${u.login}</td>
+      <td>${u.perfil}</td>
+      <td>${u.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge" style="background:rgba(255,255,255,.06);color:var(--w40);">Inativo</span>'}</td>
+      <td style="white-space:nowrap;">
+        ${podeExecutar('usuarios')?`<button class="btn btn-outline btn-sm" onclick="abrirModalUsuario('${u.login}')">Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirModalPermissoes('${u.login}')">Permissões</button>`:''}
+      </td>
+    </tr>`).join('');
+}
+
+function abrirModalUsuario(loginParaEditar){
+  document.getElementById('usLoginOriginal').value='';
+  document.getElementById('usNome').value='';
+  document.getElementById('usLogin').value='';
+  document.getElementById('usLogin').disabled=false;
+  document.getElementById('usEmail').value='';
+  document.getElementById('usPerfil').value='USUARIO';
+  document.getElementById('usAtivoWrap').style.display='none';
+
+  if(loginParaEditar){
+    const u=_usuariosCache.find(x=>x.login===loginParaEditar);
+    if(!u) return;
+    document.getElementById('modalUsuarioTitulo').textContent='Editar Usuário';
+    document.getElementById('usLoginOriginal').value=u.login;
+    document.getElementById('usNome').value=u.nome||'';
+    document.getElementById('usLogin').value=u.login;
+    document.getElementById('usLogin').disabled=true; // login não muda depois de criado
+    document.getElementById('usEmail').value=u.email||'';
+    document.getElementById('usPerfil').value=u.perfil;
+    document.getElementById('usAtivoWrap').style.display='block';
+    document.getElementById('usAtivo').value=String(u.ativo!==false);
+  }else{
+    document.getElementById('modalUsuarioTitulo').textContent='Novo Usuário';
+  }
+  openModal('modalUsuario');
+}
+
+// item 9/12/19 (Sprint 003): nunca cadastra senha aqui — a RPC do
+// servidor é a autoridade real (rejeita MASTER criado por LIDERANÇA
+// mesmo que alguém tente forçar via chamada direta).
+async function salvarUsuario(){
+  const loginOriginal=document.getElementById('usLoginOriginal').value;
+  const nome=document.getElementById('usNome').value.trim();
+  const login=document.getElementById('usLogin').value.trim();
+  const email=document.getElementById('usEmail').value.trim();
+  const perfil=document.getElementById('usPerfil').value;
+  if(!nome||!login){ showToast('Preencha Nome e Login.','error'); return; }
+  if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
+
+  const restaurar=_protegerBotao('btnSalvarUsuario','Salvando...');
+  try{
+    if(loginOriginal){
+      const ativo=document.getElementById('usAtivo').value==='true';
+      await Core.usuariosEditar(loginOriginal, nome, email, perfil, ativo);
+      showToast('✓ Usuário atualizado.','success');
+    }else{
+      await Core.usuariosCriar(login, nome, email, perfil);
+      showToast(`✓ Usuário ${login} cadastrado.`,'success');
+    }
+    closeModal('modalUsuario');
+    await renderUsuariosPermissoes();
+  }catch(e){
+    console.error('[salvarUsuario]', e);
+    showToast(e.message==='SESSAO_INDISPONIVEL' ? 'Não foi possível validar a sessão YALog.' : (e.message||'Não foi possível salvar a operação.'), 'error');
+  }finally{ restaurar(); }
+}
+
+// item 11: matriz recurso × nível — rádio, uma linha por recurso.
+async function abrirModalPermissoes(login){
+  const u=_usuariosCache.find(x=>x.login===login);
+  if(!u) return;
+  document.getElementById('modalPermissoesUsuario').textContent=`${u.nome} (${u.perfil})`;
+  document.getElementById('permLoginAlvo').value=login;
+  const tbody=document.getElementById('permissoesBody');
+  tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--w30);padding:16px;">Carregando<span class="loading-dots"></span></td></tr>';
+  openModal('modalPermissoes');
+
+  try{
+    const linhas=await Core.permissoesObter(login);
+    tbody.innerHTML=RECURSOS_PATIO.map(r=>{
+      const linha=linhas.find(l=>l.recurso===r.chave);
+      const nivelAtual=linha?linha.nivel:'SEM_ACESSO';
+      const origem=linha&&linha.origem==='OVERRIDE' ? ' <span style="font-size:9px;color:var(--orange);">(individual)</span>' : '';
+      const radio=(nivel)=>`<input type="radio" name="perm-${r.chave}" ${nivelAtual===nivel?'checked':''} onchange="onMudarPermissao('${login}','${r.chave}','${nivel}')">`;
+      return `<tr>
+        <td>${r.nome}${origem}</td>
+        <td style="text-align:center;">${radio('SEM_ACESSO')}</td>
+        <td style="text-align:center;">${radio('VISUALIZAR')}</td>
+        <td style="text-align:center;">${radio('EXECUTAR')}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){
+    console.error('[abrirModalPermissoes]', e);
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#f87171;padding:16px;">Não foi possível carregar as permissões.</td></tr>';
+  }
+}
+
+async function onMudarPermissao(login, recurso, nivel){
+  try{
+    await Core.permissoesDefinir(login, recurso, nivel);
+    showToast(`✓ ${recurso}: ${nivel}`,'success');
+    // Se o usuário alterou as próprias permissões (ou é o próprio
+    // usuário logado em outra aba), recarrega o cache local também.
+    if(login===(sessaoModulo&&sessaoModulo.login)) await carregarPermissoesOnline();
+  }catch(e){
+    console.error('[onMudarPermissao]', e);
+    showToast(e.message||'Não foi possível salvar a permissão.','error');
+    abrirModalPermissoes(login); // reverte a UI pro estado real do servidor
+  }
+}
+
+
 async function renderRecursosConfig(){
   await carregarRecursosOnline();
+  const acoesTopo=document.getElementById('acoesConfigRecursos');
+  if(acoesTopo) acoesTopo.style.display = podeExecutar('recursos') ? '' : 'none';
   const tbody=document.getElementById('recursosConfigBody');
   if(!tbody) return;
   if(!DB.recursos.length){
@@ -1841,8 +2225,8 @@ async function renderRecursosConfig(){
       <td>${r.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge" style="background:rgba(255,255,255,.06);color:var(--w40);">Inativo</span>'}</td>
       <td style="font-size:11px;color:var(--w40);">${regras}</td>
       <td style="white-space:nowrap;">
-        <button class="btn btn-outline btn-sm" onclick="abrirModalRecurso(null,'${r.id}')">Editar</button>
-        <button class="btn ${r.ativo?'btn-danger':'btn-green'} btn-sm" onclick="toggleAtivoRecurso('${r.id}')">${r.ativo?'Inativar':'Ativar'}</button>
+        ${podeExecutar('recursos')?`<button class="btn btn-outline btn-sm" onclick="abrirModalRecurso(null,'${r.id}')">Editar</button>
+        <button class="btn ${r.ativo?'btn-danger':'btn-green'} btn-sm" onclick="toggleAtivoRecurso('${r.id}')">${r.ativo?'Inativar':'Ativar'}</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -2218,10 +2602,34 @@ const pageTitles={
   novoRomaneio:'Novo Romaneio de Carga',listaRomaneios:'Romaneios',
   relatorios:'Relatórios',
   configRecursos:'Recursos Operacionais',
-  auditoria:'Histórico / Auditoria'
+  auditoria:'Histórico / Auditoria',
+  usuariosPermissoes:'Usuários e Permissões'
+};
+
+// item 7: mapeamento página -> recurso, usando só os IDs reais já
+// auditados no HTML (nenhuma página inventada).
+const RECURSO_DA_PAGINA={
+  home:'home',
+  patio:'entradas', novaEntrada:'entradas', listaEntradas:'entradas',
+  novaSaida:'entradas', listaSaidas:'entradas',
+  agenda:'agendamentos', portaria:'agendamentos',
+  listaRomaneios:'romaneios', novoRomaneio:'romaneios',
+  configRecursos:'recursos',
+  auditoria:'auditoria',
+  usuariosPermissoes:'usuarios',
 };
 
 function goTo(id){
+  // item 6/TESTE 7: SEM_ACESSO bloqueia a página inteira, antes de
+  // renderizar qualquer coisa — "acesso direto à função também deve
+  // ser bloqueado" já é garantido no servidor (RPCs); aqui é a
+  // experiência de UI correspondente, nunca a única barreira real.
+  const recursoDaPagina=RECURSO_DA_PAGINA[id];
+  if(recursoDaPagina && !temAcessoRecurso(recursoDaPagina,'VISUALIZAR')){
+    showToast('Acesso negado. Você não tem permissão para acessar esta área.','error');
+    if(id!=='home') goTo('home');
+    return;
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const pg=document.getElementById('p-'+id);
@@ -2235,17 +2643,27 @@ function goTo(id){
   if(id==='listaEntradas') renderEntradas();
   if(id==='listaSaidas') renderSaidas();
   if(id==='listaRomaneios') renderRomaneios();
-  if(id==='novoRomaneio') initRomaneio();
+  if(id==='novoRomaneio'){
+    initRomaneio();
+    const exec=podeExecutar('romaneios');
+    const btnSalvarRom=document.getElementById('btnSalvarRomaneio');
+    const btnSalvarImpRom=document.getElementById('btnSalvarImprimirRomaneio');
+    if(btnSalvarRom) btnSalvarRom.style.display = exec ? '' : 'none';
+    if(btnSalvarImpRom) btnSalvarImpRom.style.display = exec ? '' : 'none';
+  }
   if(id==='novaSaida') renderSaidaPage();
   if(id==='relatorios') renderRelatorios();
   if(id==='novaEntrada'){
     carregarVeiculosMotoristasOnline().then(()=>{ popularSelectRecursos('eDocas'); onMudarRecursoSelecionado('eDocas','eDocaAviso'); });
     popularSelectRecursos('eDocas'); onMudarRecursoSelecionado('eDocas','eDocaAviso');
+    const btnSalvarEnt0=document.getElementById('btnSalvarEntrada');
+    if(btnSalvarEnt0) btnSalvarEnt0.style.display = podeExecutar('entradas') ? '' : 'none';
   }
   if(id==='agenda') renderAgenda();
   if(id==='portaria') renderPortaria();
   if(id==='configRecursos') renderRecursosConfig();
   if(id==='auditoria') renderAuditoria();
+  if(id==='usuariosPermissoes') renderUsuariosPermissoes();
   updateBadges();
   window.scrollTo(0,0);
 }
@@ -2629,8 +3047,12 @@ function editarEntrada(id){
 async function renderSaidaPage(){
   await carregarEntradasOnline();
   await carregarRomaneiosOnline();
-  const patio=entradasAtivas().filter(e=>!e.saidaData);
   const el=document.getElementById('saidaPatioList');
+  if(!podeExecutar('entradas')){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-text">Seu perfil não tem permissão para registrar saídas.</div></div>`;
+    return;
+  }
+  const patio=entradasAtivas().filter(e=>!e.saidaData);
   if(!patio.length){
     el.innerHTML=`<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">Nenhum veículo no pátio para registrar saída</div></div>`;
     return;
@@ -2819,8 +3241,8 @@ async function renderEntradas(){
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" style="font-size:9px;padding:4px 8px;" onclick="verDetalheEntrada('${e.id}')">Ver</button>
-          ${!e.saidaData?`<button class="btn btn-green btn-sm" style="font-size:9px;padding:4px 8px;" onclick="abrirModalSaida('${e.id}')">Saída</button>`:''}
-          <button class="btn btn-danger btn-sm" style="font-size:9px;padding:4px 8px;" onclick="deletarEntrada('${e.id}')">✕</button>
+          ${!e.saidaData&&podeExecutar('entradas')?`<button class="btn btn-green btn-sm" style="font-size:9px;padding:4px 8px;" onclick="abrirModalSaida('${e.id}')">Saída</button>`:''}
+          ${podeExecutar('entradas')?`<button class="btn btn-danger btn-sm" style="font-size:9px;padding:4px 8px;" onclick="deletarEntrada('${e.id}')">✕</button>`:''}
         </div>
       </td>
     </tr>`;
@@ -2894,9 +3316,9 @@ function verDetalheEntrada(id){
     </div>
     ${e.obs?`<div style="background:var(--bg3);padding:14px;"><div style="font-size:9px;font-family:var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--w30);margin-bottom:8px;">Observações</div><div style="font-size:13px;color:var(--w60);">${e.obs}</div></div>`:''}
     <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
-      ${!e.saidaData?`<button class="btn btn-green btn-sm" onclick="abrirModalSaida('${e.id}');closeModal('modalDetalheEntrada')">↑ Registrar Saída</button>`:''}
-      <button class="btn btn-outline btn-sm" onclick="editarEntrada('${e.id}')">✎ Editar</button>
-      <button class="btn btn-danger btn-sm" onclick="deletarEntrada('${e.id}')">🗑 Excluir</button>
+      ${!e.saidaData&&podeExecutar('entradas')?`<button class="btn btn-green btn-sm" onclick="abrirModalSaida('${e.id}');closeModal('modalDetalheEntrada')">↑ Registrar Saída</button>`:''}
+      ${podeExecutar('entradas')?`<button class="btn btn-outline btn-sm" onclick="editarEntrada('${e.id}')">✎ Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="deletarEntrada('${e.id}')">🗑 Excluir</button>`:''}
     </div>
   `;
   openModal('modalDetalheEntrada');
@@ -3360,7 +3782,7 @@ async function renderRomaneios(){
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap;">
           <button class="btn btn-print btn-sm" style="font-size:9px;padding:4px 8px;" onclick="imprimirRomaneio('${r.id}')">🖨️ Imprimir</button>
-          <button class="btn btn-danger btn-sm" style="font-size:9px;padding:4px 8px;" onclick="deletarRomaneio('${r.id}')">✕</button>
+          ${podeExecutar('romaneios')?`<button class="btn btn-danger btn-sm" style="font-size:9px;padding:4px 8px;" onclick="deletarRomaneio('${r.id}')">✕</button>`:''}
         </div>
       </td>
     </tr>`;
@@ -4030,17 +4452,18 @@ function _agendamentosFiltrados(){
 
 function _cardAgendamento(ag, modoPortaria){
   const cor = ag.tipoOperacao==='COLETA_CARGA' ? '#f59e0b' : '#3b82f6';
-  const podeExcluir=canPerformAction('DELETE');
-  const acoesTime = `
+  const exec=podeExecutar('agendamentos');
+  const podeExcluir=exec && canPerformAction('DELETE');
+  const acoesTime = exec ? `
     <button class="btn btn-outline btn-sm" onclick="abrirModalAgendamento('${ag.id}')">Editar</button>
     ${ag.status==='AGENDADO'?`<button class="btn btn-blue btn-sm" onclick="mudarStatusAgendamento('${ag.id}','CONFIRMADO');renderAgenda();">Confirmar</button>`:''}
     ${!['FINALIZADO','CANCELADO','NAO_COMPARECEU'].includes(ag.status)?`<button class="btn btn-danger btn-sm" onclick="cancelarAgendamento('${ag.id}')">Cancelar</button>`:''}
     ${podeExcluir?`<button class="btn btn-danger btn-sm" onclick="excluirAgendamento('${ag.id}')">Excluir</button>`:''}
-  `;
-  const acoesPortaria = `
+  ` : '';
+  const acoesPortaria = exec ? `
     ${['AGENDADO','CONFIRMADO'].includes(ag.status)?`<button class="btn btn-blue btn-sm" onclick="confirmarChegadaAgendamento('${ag.id}')">Confirmar Chegada</button>`:''}
     ${ag.status==='CHEGOU'?`<button class="btn btn-primary btn-sm" onclick="enviarAgendamentoParaPatio('${ag.id}')">Enviar para Pátio</button>`:''}
-  `;
+  ` : '';
   return `
     <div style="background:var(--panel);border:1px solid var(--border);border-left:3px solid ${cor};padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <div>
@@ -4060,6 +4483,8 @@ function _cardAgendamento(ag, modoPortaria){
 async function renderAgenda(){
   const el=document.getElementById('agendaLista');
   if(!el) return;
+  const btnNovoAg=document.getElementById('btnNovoAgendamento');
+  if(btnNovoAg) btnNovoAg.style.display = podeExecutar('agendamentos') ? '' : 'none';
   if(Core.ONLINE_DISPONIVEL()){
     el.innerHTML='<div style="color:var(--w30);text-align:center;padding:30px;">Sincronizando<span class="loading-dots"></span></div>';
     const ok=await carregarAgendamentosOnline();
@@ -4415,6 +4840,8 @@ function renderDashboardOperacional(){
   if(!ok) return; // iniciarSessaoModulo() já substituiu a tela por completo (item 6)
 
   loadDB(); renderLogo();
+  await carregarPermissoesOnline();
+  aplicarGatesDeInterface();
 
   if(sessaoModulo && sessaoModulo._dev){
     const banner=document.createElement('div');
