@@ -362,6 +362,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
     <div class="topbar-right">
       <div class="topbar-clock" id="topbarClock"></div>
       <div class="topbar-date" id="topbarDate"></div>
+      <button class="btn btn-outline btn-sm" id="btnSairPatio" onclick="sair()" style="margin-left:12px;">Sair</button>
     </div>
   </div>
 
@@ -1098,6 +1099,32 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
         <div class="form-group"><label>Nome <span class="required">*</span></label><input type="text" id="usNome" placeholder="Nome completo"></div>
         <div class="form-group"><label>Login <span class="required">*</span></label><input type="text" id="usLogin" placeholder="login.usuario"></div>
         <div class="form-group"><label>E-mail</label><input type="email" id="usEmail" placeholder="usuario@empresa.com"></div>
+        <div id="usSenhaWrap">
+          <div class="form-group">
+            <label>Senha <span class="required">*</span></label>
+            <div style="display:flex;gap:8px;">
+              <input type="password" id="usSenha" placeholder="Mínimo 6 caracteres" style="flex:1;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="toggleMostrarSenha('usSenha',this)">Mostrar</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Confirmar Senha <span class="required">*</span></label>
+            <input type="password" id="usConfirmarSenha" placeholder="Repita a senha">
+          </div>
+        </div>
+        <div id="usAlterarSenhaWrap" style="display:none;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="mostrarBlocoAlterarSenha()">Alterar Senha</button>
+          <div id="usBlocoNovaSenha" style="display:none;margin-top:10px;">
+            <div class="form-group">
+              <label>Nova Senha</label>
+              <div style="display:flex;gap:8px;">
+                <input type="password" id="usNovaSenha" placeholder="Mínimo 6 caracteres" style="flex:1;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleMostrarSenha('usNovaSenha',this)">Mostrar</button>
+              </div>
+            </div>
+            <div class="form-group"><label>Confirmar Nova Senha</label><input type="password" id="usConfirmarNovaSenha" placeholder="Repita a nova senha"></div>
+          </div>
+        </div>
         <div class="form-group"><label>Perfil <span class="required">*</span></label>
           <select id="usPerfil">
             <option value="MASTER">MASTER</option>
@@ -1405,6 +1432,30 @@ const YALOG_PATIO_CONFIG = {
 // já nasce igual à do WMS/Ecosystem (mesmo nome de RPC, mesmo shape
 // de identidade), mesmo sem um cliente Supabase real conectado ainda.
 let sessaoModulo = null; // { company_id, login, nome, perfil, module_session_token } quando SSO estiver ativo
+let URL_RETORNO_ECOSYSTEM = null;
+
+// item 18/19: SAIR — revoga a sessão do módulo no servidor (mesma
+// RPC já usada pelo WMS, revogar_sessao_modulo), depois volta pro
+// Ecosystem usando a sessão global existente — nunca cria login novo,
+// nunca pede autenticação de novo se a sessão do Ecosystem continuar
+// válida (isso é responsabilidade do próprio Ecosystem ao receber a
+// navegação de volta).
+async function sair(){
+  if(!confirm('Sair do Gestão de Pátio e voltar ao YALog Ecosystem?')) return;
+  try{
+    if(sessaoModulo && sessaoModulo.module_session_token && typeof window.supabaseClient!=='undefined' && window.supabaseClient){
+      await window.supabaseClient.rpc('revogar_sessao_modulo', {p_token: sessaoModulo.module_session_token});
+    }
+  }catch(e){
+    console.error('[sair] falha ao revogar sessão do módulo no servidor — saindo mesmo assim:', e);
+  }
+  if(URL_RETORNO_ECOSYSTEM){
+    window.location.href = URL_RETORNO_ECOSYSTEM;
+  }else{
+    history.back();
+  }
+}
+
 
 function _sessaoDesenvolvimentoLocal(){
   // item 1: sessão sintética, visível como tal na tela (nunca deve
@@ -1456,6 +1507,13 @@ async function iniciarSessaoModulo(){
   // Marcador de build — sempre a primeira linha no console, independente
   // do resultado do handoff. Confirma qual arquivo está de fato rodando.
   console.log('[PATIO] build: ONLINE-003-R1 | MODO_SSO.EXIGIR='+MODO_SSO.EXIGIR+' | YALOG_PATIO_CONFIG.MODO='+YALOG_PATIO_CONFIG.MODO);
+
+  // item 18/19: captura a origem (o Ecosystem, que gerou o handoff)
+  // logo no boot — document.referrer reflete a página que trouxe o
+  // usuário até aqui, e não muda com navegação subsequente dentro da
+  // mesma page load. Usado pelo botão SAIR para voltar sem redigitar
+  // nenhuma URL fixa.
+  URL_RETORNO_ECOSYSTEM = document.referrer || null;
 
   // SPRINT 002B-R1: o cliente precisa existir ANTES de qualquer
   // tentativa de handoff — sem isso, toda chamada Core.* falha
@@ -1643,10 +1701,11 @@ const Core = {
     if(error) throw error;
     return data||[];
   },
-  async usuariosCriar(login, nome, email, perfil){
+  async usuariosCriar(login, nome, email, perfil, senhaHash){
     if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
     const {data,error} = await window.supabaseClient.rpc('patio_usuarios_criar', {
-      p_session_token: sessaoModulo.module_session_token, p_login: login, p_nome: nome, p_email: email, p_perfil: perfil,
+      p_session_token: sessaoModulo.module_session_token, p_login: login, p_nome: nome, p_email: email,
+      p_perfil: perfil, p_senha_hash: senhaHash,
     });
     if(error) throw error;
     return !!data;
@@ -1660,7 +1719,25 @@ const Core = {
     if(error) throw error;
     return !!data;
   },
+  async usuariosAlterarSenha(loginAlvo, novaSenhaHash){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_usuarios_alterar_senha', {
+      p_session_token: sessaoModulo.module_session_token, p_login_alvo: loginAlvo, p_nova_senha_hash: novaSenhaHash,
+    });
+    if(error) throw error;
+    return !!data;
+  },
 };
+
+// item 4 (Sprint 005): mesma convenção de hash já usada pelo YALog
+// Ecosystem (SHA-256(senha+'::yalog')) — nunca a senha em texto puro
+// trafega além deste cálculo local. Reaproveitada, não reinventada.
+async function hashSenha(senha){
+  const material = senha + '::yalog';
+  const enc = new TextEncoder().encode(material);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 
 // item 21: proteção contra duplo clique — desabilita o botão durante
 // a operação assíncrona, restaura (texto + estado) ao final,
@@ -2111,12 +2188,27 @@ async function renderUsuariosPermissoes(){
     </tr>`).join('');
 }
 
+function toggleMostrarSenha(idCampo, botao){
+  const campo=document.getElementById(idCampo);
+  const mostrando = campo.type==='text';
+  campo.type = mostrando ? 'password' : 'text';
+  botao.textContent = mostrando ? 'Mostrar' : 'Ocultar';
+}
+function mostrarBlocoAlterarSenha(){
+  document.getElementById('usBlocoNovaSenha').style.display='block';
+}
+
 function abrirModalUsuario(loginParaEditar){
   document.getElementById('usLoginOriginal').value='';
   document.getElementById('usNome').value='';
   document.getElementById('usLogin').value='';
   document.getElementById('usLogin').disabled=false;
   document.getElementById('usEmail').value='';
+  document.getElementById('usSenha').value='';
+  document.getElementById('usConfirmarSenha').value='';
+  document.getElementById('usNovaSenha').value='';
+  document.getElementById('usConfirmarNovaSenha').value='';
+  document.getElementById('usBlocoNovaSenha').style.display='none';
   document.getElementById('usPerfil').value='USUARIO';
   document.getElementById('usAtivoWrap').style.display='none';
 
@@ -2132,8 +2224,15 @@ function abrirModalUsuario(loginParaEditar){
     document.getElementById('usPerfil').value=u.perfil;
     document.getElementById('usAtivoWrap').style.display='block';
     document.getElementById('usAtivo').value=String(u.ativo!==false);
+    // item 4/16: na edição, senha vira ação separada "Alterar Senha"
+    // — nunca mostra a senha atual, nunca exige senha pra só editar
+    // nome/perfil/status.
+    document.getElementById('usSenhaWrap').style.display='none';
+    document.getElementById('usAlterarSenhaWrap').style.display='block';
   }else{
     document.getElementById('modalUsuarioTitulo').textContent='Novo Usuário';
+    document.getElementById('usSenhaWrap').style.display='block';
+    document.getElementById('usAlterarSenhaWrap').style.display='none';
   }
   openModal('modalUsuario');
 }
@@ -2150,14 +2249,38 @@ async function salvarUsuario(){
   if(!nome||!login){ showToast('Preencha Nome e Login.','error'); return; }
   if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
 
+  // item 4: senha obrigatória só na criação.
+  let senhaHash=null;
+  if(!loginOriginal){
+    const senha=document.getElementById('usSenha').value;
+    const confirmar=document.getElementById('usConfirmarSenha').value;
+    if(!senha||senha.length<6){ showToast('A senha deve ter pelo menos 6 caracteres.','error'); return; }
+    if(senha!==confirmar){ showToast('As senhas não coincidem.','error'); return; }
+    senhaHash=await hashSenha(senha);
+  }
+
+  // item 16: nova senha é opcional na edição — só processa se o
+  // bloco "Alterar Senha" foi aberto e preenchido.
+  let novaSenhaHash=null;
+  if(loginOriginal && document.getElementById('usBlocoNovaSenha').style.display!=='none'){
+    const novaSenha=document.getElementById('usNovaSenha').value;
+    const confirmarNova=document.getElementById('usConfirmarNovaSenha').value;
+    if(novaSenha||confirmarNova){
+      if(novaSenha.length<6){ showToast('A nova senha deve ter pelo menos 6 caracteres.','error'); return; }
+      if(novaSenha!==confirmarNova){ showToast('As senhas não coincidem.','error'); return; }
+      novaSenhaHash=await hashSenha(novaSenha);
+    }
+  }
+
   const restaurar=_protegerBotao('btnSalvarUsuario','Salvando...');
   try{
     if(loginOriginal){
       const ativo=document.getElementById('usAtivo').value==='true';
       await Core.usuariosEditar(loginOriginal, nome, email, perfil, ativo);
+      if(novaSenhaHash) await Core.usuariosAlterarSenha(loginOriginal, novaSenhaHash);
       showToast('✓ Usuário atualizado.','success');
     }else{
-      await Core.usuariosCriar(login, nome, email, perfil);
+      await Core.usuariosCriar(login, nome, email, perfil, senhaHash);
       showToast(`✓ Usuário ${login} cadastrado.`,'success');
     }
     closeModal('modalUsuario');
