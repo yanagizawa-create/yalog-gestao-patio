@@ -1818,7 +1818,7 @@ function canPerformAction(action, profile){
 // real (essa é sempre o backend, item 12/TESTE 8).
 const RECURSOS_PATIO=[
   {chave:'home', nome:'Painel Geral'},
-  {chave:'entradas', nome:'Entradas / Carga / Descarga'},
+  {chave:'entradas', nome:'Entradas / Saídas'},
   {chave:'agendamentos', nome:'Agendamentos'},
   {chave:'romaneios', nome:'Romaneios'},
   {chave:'veiculos', nome:'Veículos'},
@@ -1851,25 +1851,33 @@ function permissaoPadraoPerfil(perfil, recurso){
 // servidor (já embutida em patio_upsert/soft_delete/restore).
 let PERMISSOES_EFETIVAS={};
 async function carregarPermissoesOnline(){
+  const perfil=perfilAtual();
+  // item 9 (Sprint 004): a base NUNCA é {} — é sempre, no mínimo, o
+  // padrão do perfil atual (calculado aqui, mesma lógica já usada em
+  // modo dev). Pra MASTER/LIDERANÇA isso já é EXECUTAR em tudo, sem
+  // depender de nenhuma chamada de rede ter dado certo. Isso não é
+  // "if perfil===MASTER then true" como bypass de segurança — é só a
+  // resolução visual padrão; toda escrita continua validada pelas
+  // RPCs no servidor, que nunca mudaram.
+  const mapa={};
+  RECURSOS_PATIO.forEach(r=>{ mapa[r.chave]=permissaoPadraoPerfil(perfil, r.chave); });
+
   if(Core.ONLINE_DISPONIVEL()){
     try{
       const linhas=await Core.permissoesObter();
-      const mapa={};
-      linhas.forEach(l=>{ mapa[l.recurso]=l.nivel; });
-      PERMISSOES_EFETIVAS=mapa;
-      return true;
+      // Sobrescreve só com o que a RPC realmente devolveu. Se vier
+      // incompleta (menos de 10 recursos), os que faltarem continuam
+      // com o padrão do perfil já calculado acima — nunca com
+      // SEM_ACESSO por omissão.
+      linhas.forEach(l=>{ if(l && l.recurso && l.nivel) mapa[l.recurso]=l.nivel; });
     }catch(e){
       console.error('[carregarPermissoesOnline]', e);
-      // Falha ao carregar -> nunca assume acesso liberado por omissão.
-      PERMISSOES_EFETIVAS={};
-      return false;
+      // Falhou a chamada -> fica com o padrão do perfil, nunca com
+      // tudo vazio/bloqueado. Overrides individuais só deixam de ser
+      // aplicados enquanto a causa da falha (rede/sessão) persistir;
+      // assim que a próxima chamada funcionar, eles voltam a valer.
     }
   }
-  // modo de teste local: replica a matriz padrão do perfil de teste
-  // selecionado, sem overrides (não há RPC pra consultar).
-  const perfil=perfilAtual();
-  const mapa={};
-  RECURSOS_PATIO.forEach(r=>{ mapa[r.chave]=permissaoPadraoPerfil(perfil, r.chave); });
   PERMISSOES_EFETIVAS=mapa;
   return true;
 }
