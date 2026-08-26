@@ -1126,7 +1126,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
           </div>
         </div>
         <div class="form-group"><label>Perfil <span class="required">*</span></label>
-          <select id="usPerfil">
+          <select id="usPerfil" onchange="onMudarPerfilModal()">
             <option value="MASTER">MASTER</option>
             <option value="LIDERANCA">LIDERANÇA</option>
             <option value="ANALISTA">ANALISTA</option>
@@ -1137,28 +1137,18 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
           <label>Status</label>
           <select id="usAtivo"><option value="true">Ativo</option><option value="false">Inativo</option></select>
         </div>
+        <div class="form-group">
+          <label>Permissões de Acesso ao Pátio</label>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Recurso</th><th style="text-align:center;">Ocultar</th><th style="text-align:center;">Visualizar</th><th style="text-align:center;">Executar</th></tr></thead>
+              <tbody id="usPermissoesBody"></tbody>
+            </table>
+          </div>
+        </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-outline btn-sm" onclick="closeModal('modalUsuario')">Cancelar</button>
           <button class="btn btn-primary btn-sm" id="btnSalvarUsuario" onclick="salvarUsuario()">Salvar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══════ MODAL PERMISSÕES (matriz por recurso) ══════ -->
-    <div class="modal-overlay" id="modalPermissoes">
-      <div class="modal">
-        <button class="modal-close" onclick="closeModal('modalPermissoes')">✕</button>
-        <div class="modal-title">Permissões — <span id="modalPermissoesUsuario"></span></div>
-        <div class="modal-sub">Sobrescreve, recurso por recurso, o padrão do perfil. Sem seleção aqui, vale o padrão.</div>
-        <input type="hidden" id="permLoginAlvo">
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>Recurso</th><th style="text-align:center;">Sem Acesso</th><th style="text-align:center;">Visualizar</th><th style="text-align:center;">Executar</th></tr></thead>
-            <tbody id="permissoesBody"></tbody>
-          </table>
-        </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-          <button class="btn btn-outline btn-sm" onclick="closeModal('modalPermissoes')">Fechar</button>
         </div>
       </div>
     </div>
@@ -2167,8 +2157,17 @@ async function renderUsuariosPermissoes(){
   try{
     _usuariosCache=await Core.usuariosListar();
   }catch(e){
-    console.error('[renderUsuariosPermissoes]', e);
-    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#f87171;padding:24px;">Não foi possível carregar os usuários. Verifique a conexão.</td></tr>';
+    // item 8 (Sprint 006): nunca mais um erro genérico sem detalhe
+    // técnico — qualquer falha de RPC daqui pra frente é
+    // diagnosticável de imediato no console, sem outra rodada de
+    // adivinhação.
+    console.error('[PATIO USERS ERROR]', {
+      RPC: 'patio_usuarios_listar',
+      code: e && e.code, message: e && e.message,
+      details: e && e.details, hint: e && e.hint,
+      erroCompleto: e,
+    });
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#f87171;padding:24px;">Não foi possível carregar os usuários. Detalhe técnico registrado no console.</td></tr>';
     return;
   }
   if(!_usuariosCache.length){
@@ -2182,8 +2181,7 @@ async function renderUsuariosPermissoes(){
       <td>${u.perfil}</td>
       <td>${u.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge" style="background:rgba(255,255,255,.06);color:var(--w40);">Inativo</span>'}</td>
       <td style="white-space:nowrap;">
-        ${podeExecutar('usuarios')?`<button class="btn btn-outline btn-sm" onclick="abrirModalUsuario('${u.login}')">Editar</button>
-        <button class="btn btn-outline btn-sm" onclick="abrirModalPermissoes('${u.login}')">Permissões</button>`:''}
+        ${podeExecutar('usuarios')?`<button class="btn btn-outline btn-sm" onclick="abrirModalUsuario('${u.login}')">Editar</button>`:''}
       </td>
     </tr>`).join('');
 }
@@ -2229,12 +2227,65 @@ function abrirModalUsuario(loginParaEditar){
     // nome/perfil/status.
     document.getElementById('usSenhaWrap').style.display='none';
     document.getElementById('usAlterarSenhaWrap').style.display='block';
+    // item 10: mostra o estado EFETIVO real (override quando existir,
+    // não só o padrão do perfil) — busca no servidor.
+    renderMatrizPermissoesModal(loginParaEditar);
   }else{
     document.getElementById('modalUsuarioTitulo').textContent='Novo Usuário';
     document.getElementById('usSenhaWrap').style.display='block';
     document.getElementById('usAlterarSenhaWrap').style.display='none';
+    // item 6: ao abrir pra criar, carrega a matriz padrão do perfil
+    // já pré-selecionado no combo (USUARIO).
+    renderMatrizPermissoesModal(null);
   }
   openModal('modalUsuario');
+}
+
+// item 6: matriz muda junto quando o perfil selecionado muda —
+// "ao selecionar MASTER, carregar automaticamente a matriz padrão
+// MASTER" — vale tanto pra criação quanto pra reaproveitar ao trocar
+// o perfil de alguém em edição (o override anterior fica substituído
+// pelo novo padrão; MASTER/LIDERANÇA pode then individualizar nesse
+// momento e salvar).
+function onMudarPerfilModal(){
+  const loginOriginal=document.getElementById('usLoginOriginal').value;
+  renderMatrizPermissoesModal(loginOriginal||null, true);
+}
+
+// item 6/10: renderiza a matriz — se loginAlvo existir, busca o
+// estado EFETIVO real (override > padrão) no servidor; senão (ou se
+// forcarPadrao), usa só o padrão do perfil selecionado no combo.
+async function renderMatrizPermissoesModal(loginAlvo, forcarPadrao){
+  const tbody=document.getElementById('usPermissoesBody');
+  const perfilSelecionado=document.getElementById('usPerfil').value;
+  let linhas=null;
+  if(loginAlvo && !forcarPadrao && Core.ONLINE_DISPONIVEL()){
+    try{ linhas=await Core.permissoesObter(loginAlvo); }
+    catch(e){
+      console.error('[PATIO USERS ERROR]', {RPC:'patio_permissoes_obter', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
+      linhas=null; // cai pro padrão do perfil abaixo, nunca deixa a matriz vazia
+    }
+  }
+  tbody.innerHTML=RECURSOS_PATIO.map(r=>{
+    const linha=linhas ? linhas.find(l=>l.recurso===r.chave) : null;
+    const nivelAtual = linha ? linha.nivel : permissaoPadraoPerfil(perfilSelecionado, r.chave);
+    const radio=(nivel)=>`<input type="radio" name="usPerm-${r.chave}" value="${nivel}" ${nivelAtual===nivel?'checked':''}>`;
+    return `<tr>
+      <td>${r.nome}</td>
+      <td style="text-align:center;">${radio('SEM_ACESSO')}</td>
+      <td style="text-align:center;">${radio('VISUALIZAR')}</td>
+      <td style="text-align:center;">${radio('EXECUTAR')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function _lerMatrizPermissoesModal(){
+  const resultado={};
+  RECURSOS_PATIO.forEach(r=>{
+    const marcado=document.querySelector(`input[name="usPerm-${r.chave}"]:checked`);
+    resultado[r.chave]=marcado?marcado.value:'SEM_ACESSO';
+  });
+  return resultado;
 }
 
 // item 9/12/19 (Sprint 003): nunca cadastra senha aqui — a RPC do
@@ -2272,68 +2323,50 @@ async function salvarUsuario(){
     }
   }
 
+  const matriz=_lerMatrizPermissoesModal();
   const restaurar=_protegerBotao('btnSalvarUsuario','Salvando...');
   try{
+    let loginFinal=loginOriginal;
     if(loginOriginal){
       const ativo=document.getElementById('usAtivo').value==='true';
       await Core.usuariosEditar(loginOriginal, nome, email, perfil, ativo);
       if(novaSenhaHash) await Core.usuariosAlterarSenha(loginOriginal, novaSenhaHash);
-      showToast('✓ Usuário atualizado.','success');
     }else{
       await Core.usuariosCriar(login, nome, email, perfil, senhaHash);
-      showToast(`✓ Usuário ${login} cadastrado.`,'success');
+      loginFinal=login;
     }
+
+    // item 7: salva a matriz junto — sequencial (uma chamada por
+    // recurso). NÃO é transacional com a criação/edição do usuário
+    // acima: não existe hoje uma RPC única que faça as duas coisas
+    // numa transação, e eu não inventei uma sem confirmar antes que
+    // não existia (regra 1 desta sprint). Se o usuário foi
+    // criado/editado com sucesso mas alguma permissão falhar aqui,
+    // avisamos exatamente qual, sem fingir que deu tudo certo.
+    const falhas=[];
+    for(const r of RECURSOS_PATIO){
+      try{ await Core.permissoesDefinir(loginFinal, r.chave, matriz[r.chave]); }
+      catch(e){
+        console.error('[PATIO USERS ERROR]', {RPC:'patio_permissoes_definir', recurso:r.chave, code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
+        falhas.push(r.nome);
+      }
+    }
+
+    if(falhas.length){
+      showToast(`✓ Usuário salvo, mas ${falhas.length} permissão(ões) não foram gravadas: ${falhas.join(', ')}.`,'error');
+    }else{
+      showToast(loginOriginal ? '✓ Usuário e permissões atualizados.' : `✓ Usuário ${loginFinal} cadastrado com permissões.`, 'success');
+    }
+
+    if(loginFinal===(sessaoModulo&&sessaoModulo.login)) await carregarPermissoesOnline();
     closeModal('modalUsuario');
     await renderUsuariosPermissoes();
   }catch(e){
-    console.error('[salvarUsuario]', e);
+    console.error('[PATIO USERS ERROR]', {RPC: loginOriginal?'patio_usuarios_editar':'patio_usuarios_criar', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
     showToast(e.message==='SESSAO_INDISPONIVEL' ? 'Não foi possível validar a sessão YALog.' : (e.message||'Não foi possível salvar a operação.'), 'error');
   }finally{ restaurar(); }
 }
 
-// item 11: matriz recurso × nível — rádio, uma linha por recurso.
-async function abrirModalPermissoes(login){
-  const u=_usuariosCache.find(x=>x.login===login);
-  if(!u) return;
-  document.getElementById('modalPermissoesUsuario').textContent=`${u.nome} (${u.perfil})`;
-  document.getElementById('permLoginAlvo').value=login;
-  const tbody=document.getElementById('permissoesBody');
-  tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--w30);padding:16px;">Carregando<span class="loading-dots"></span></td></tr>';
-  openModal('modalPermissoes');
-
-  try{
-    const linhas=await Core.permissoesObter(login);
-    tbody.innerHTML=RECURSOS_PATIO.map(r=>{
-      const linha=linhas.find(l=>l.recurso===r.chave);
-      const nivelAtual=linha?linha.nivel:'SEM_ACESSO';
-      const origem=linha&&linha.origem==='OVERRIDE' ? ' <span style="font-size:9px;color:var(--orange);">(individual)</span>' : '';
-      const radio=(nivel)=>`<input type="radio" name="perm-${r.chave}" ${nivelAtual===nivel?'checked':''} onchange="onMudarPermissao('${login}','${r.chave}','${nivel}')">`;
-      return `<tr>
-        <td>${r.nome}${origem}</td>
-        <td style="text-align:center;">${radio('SEM_ACESSO')}</td>
-        <td style="text-align:center;">${radio('VISUALIZAR')}</td>
-        <td style="text-align:center;">${radio('EXECUTAR')}</td>
-      </tr>`;
-    }).join('');
-  }catch(e){
-    console.error('[abrirModalPermissoes]', e);
-    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#f87171;padding:16px;">Não foi possível carregar as permissões.</td></tr>';
-  }
-}
-
-async function onMudarPermissao(login, recurso, nivel){
-  try{
-    await Core.permissoesDefinir(login, recurso, nivel);
-    showToast(`✓ ${recurso}: ${nivel}`,'success');
-    // Se o usuário alterou as próprias permissões (ou é o próprio
-    // usuário logado em outra aba), recarrega o cache local também.
-    if(login===(sessaoModulo&&sessaoModulo.login)) await carregarPermissoesOnline();
-  }catch(e){
-    console.error('[onMudarPermissao]', e);
-    showToast(e.message||'Não foi possível salvar a permissão.','error');
-    abrirModalPermissoes(login); // reverte a UI pro estado real do servidor
-  }
-}
 
 
 async function renderRecursosConfig(){
