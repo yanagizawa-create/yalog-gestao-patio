@@ -1109,7 +1109,6 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
         <input type="hidden" id="usLoginOriginal">
         <div class="form-group"><label>Nome <span class="required">*</span></label><input type="text" id="usNome" placeholder="Nome completo"></div>
         <div class="form-group"><label>Login <span class="required">*</span></label><input type="text" id="usLogin" placeholder="login.usuario"></div>
-        <div class="form-group"><label>E-mail</label><input type="email" id="usEmail" placeholder="usuario@empresa.com"></div>
         <div id="usSenhaWrap">
           <div class="form-group">
             <label>Senha <span class="required">*</span></label>
@@ -1702,20 +1701,20 @@ const Core = {
     if(error) throw error;
     return data||[];
   },
-  async usuariosCriar(login, nome, email, perfil, senhaHash){
+  async usuariosCriar(login, nome, perfil, senhaHash){
     if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
     const {data,error} = await window.supabaseClient.rpc('patio_usuarios_criar', {
-      p_session_token: sessaoModulo.module_session_token, p_login: login, p_nome: nome, p_email: email,
+      p_session_token: sessaoModulo.module_session_token, p_login: login, p_nome: nome,
       p_perfil: perfil, p_senha_hash: senhaHash,
     });
     if(error) throw error;
     return !!data;
   },
-  async usuariosEditar(loginAlvo, nome, email, perfil, ativo){
+  async usuariosEditar(loginAlvo, nome, perfil, ativo){
     if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
     const {data,error} = await window.supabaseClient.rpc('patio_usuarios_editar', {
       p_session_token: sessaoModulo.module_session_token, p_login_alvo: loginAlvo,
-      p_nome: nome, p_email: email, p_perfil: perfil, p_ativo: ativo,
+      p_nome: nome, p_perfil: perfil, p_ativo: ativo,
     });
     if(error) throw error;
     return !!data;
@@ -2212,7 +2211,6 @@ function abrirModalUsuario(loginParaEditar){
   document.getElementById('usNome').value='';
   document.getElementById('usLogin').value='';
   document.getElementById('usLogin').disabled=false;
-  document.getElementById('usEmail').value='';
   document.getElementById('usSenha').value='';
   document.getElementById('usConfirmarSenha').value='';
   document.getElementById('usNovaSenha').value='';
@@ -2229,7 +2227,6 @@ function abrirModalUsuario(loginParaEditar){
     document.getElementById('usNome').value=u.nome||'';
     document.getElementById('usLogin').value=u.login;
     document.getElementById('usLogin').disabled=true; // login não muda depois de criado
-    document.getElementById('usEmail').value=u.email||'';
     document.getElementById('usPerfil').value=u.perfil;
     document.getElementById('usAtivoWrap').style.display='block';
     document.getElementById('usAtivo').value=String(u.ativo!==false);
@@ -2306,7 +2303,6 @@ async function salvarUsuario(){
   const loginOriginal=document.getElementById('usLoginOriginal').value;
   const nome=document.getElementById('usNome').value.trim();
   const login=document.getElementById('usLogin').value.trim();
-  const email=document.getElementById('usEmail').value.trim();
   const perfil=document.getElementById('usPerfil').value;
   if(!nome||!login){ showToast('Preencha Nome e Login.','error'); return; }
   if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
@@ -2340,10 +2336,10 @@ async function salvarUsuario(){
     let loginFinal=loginOriginal;
     if(loginOriginal){
       const ativo=document.getElementById('usAtivo').value==='true';
-      await Core.usuariosEditar(loginOriginal, nome, email, perfil, ativo);
+      await Core.usuariosEditar(loginOriginal, nome, perfil, ativo);
       if(novaSenhaHash) await Core.usuariosAlterarSenha(loginOriginal, novaSenhaHash);
     }else{
-      await Core.usuariosCriar(login, nome, email, perfil, senhaHash);
+      await Core.usuariosCriar(login, nome, perfil, senhaHash);
       loginFinal=login;
     }
 
