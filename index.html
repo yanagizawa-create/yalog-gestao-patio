@@ -373,6 +373,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
     <div class="topbar-right">
       <div class="topbar-clock" id="topbarClock"></div>
       <div class="topbar-date" id="topbarDate"></div>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalMinhaSenha()" style="margin-left:8px;">Alterar minha senha</button>
       <button class="btn btn-outline btn-sm" id="btnSairPatio" onclick="sair()" style="margin-left:12px;">Sair</button>
     </div>
   </div>
@@ -1101,6 +1102,25 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
     </div>
 
     <!-- ══════ MODAL USUÁRIO (criar/editar) ══════ -->
+    <!-- ══════ MODAL ALTERAR MINHA SENHA (item 7 — qualquer perfil) ══════ -->
+    <div class="modal-overlay" id="modalMinhaSenha">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal('modalMinhaSenha')">✕</button>
+        <div class="modal-title">Alterar minha senha</div>
+        <div class="form-group"><label>Senha atual <span class="required">*</span></label>
+          <div style="display:flex;gap:8px;"><input type="password" id="msSenhaAtual" style="flex:1;"><button type="button" class="btn btn-outline btn-sm" onclick="toggleMostrarSenha('msSenhaAtual',this)">Mostrar</button></div>
+        </div>
+        <div class="form-group"><label>Nova senha <span class="required">*</span></label>
+          <div style="display:flex;gap:8px;"><input type="password" id="msNovaSenha" placeholder="Mínimo 6 caracteres" style="flex:1;"><button type="button" class="btn btn-outline btn-sm" onclick="toggleMostrarSenha('msNovaSenha',this)">Mostrar</button></div>
+        </div>
+        <div class="form-group"><label>Confirmar nova senha <span class="required">*</span></label><input type="password" id="msConfirmarNovaSenha"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-outline btn-sm" onclick="closeModal('modalMinhaSenha')">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="btnSalvarMinhaSenha" onclick="salvarMinhaSenha()">Salvar</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="modalUsuario">
       <div class="modal">
         <button class="modal-close" onclick="closeModal('modalUsuario')">✕</button>
@@ -1133,6 +1153,8 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
               </div>
             </div>
             <div class="form-group"><label>Confirmar Nova Senha</label><input type="password" id="usConfirmarNovaSenha" placeholder="Repita a nova senha"></div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="gerarSenhaTemporaria()">Gerar senha temporária</button>
+            <div id="usSenhaTemporariaAviso" style="display:none;font-size:11px;color:var(--orange);margin-top:6px;">Copie esta senha antes de salvar — ela não será mostrada novamente: <strong id="usSenhaTemporariaTexto"></strong></div>
           </div>
         </div>
         <div class="form-group"><label>Perfil <span class="required">*</span></label>
@@ -1145,7 +1167,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
         </div>
         <div class="form-group" id="usAtivoWrap" style="display:none;">
           <label>Status</label>
-          <select id="usAtivo"><option value="true">Ativo</option><option value="false">Inativo</option></select>
+          <select id="usAtivo"><option value="true">Ativo</option><option value="false">Bloqueado</option></select>
         </div>
         <div class="form-group">
           <label>Permissões de Acesso ao Pátio</label>
@@ -1155,6 +1177,9 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
               <tbody id="usPermissoesBody"></tbody>
             </table>
           </div>
+        </div>
+        <div id="usExcluirWrap" style="display:none;border-top:1px solid var(--border2);margin-top:16px;padding-top:16px;">
+          <button class="btn btn-danger btn-sm" onclick="excluirUsuario()">Excluir usuário</button>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-outline btn-sm" onclick="closeModal('modalUsuario')">Cancelar</button>
@@ -1449,11 +1474,67 @@ async function sair(){
   }catch(e){
     console.error('[sair] falha ao revogar sessão do módulo no servidor — saindo mesmo assim:', e);
   }
+  try{ sessionStorage.removeItem(CHAVE_SESSAO_PERSISTIDA); }catch(e){}
   if(URL_RETORNO_ECOSYSTEM){
     window.location.href = URL_RETORNO_ECOSYSTEM;
   }else{
     history.back();
   }
+}
+
+
+async function excluirUsuario(){
+  const loginAlvo=document.getElementById('usLoginOriginal').value;
+  if(!loginAlvo) return;
+  if(!confirm('Tem certeza que deseja excluir este usuário?')) return;
+  if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
+
+  const u=_usuariosCache.find(x=>x.login===loginAlvo);
+  const restaurar=_protegerBotao('btnSalvarUsuario','Excluindo...');
+  try{
+    // item 5: exclusão lógica, não DELETE físico — mesmo mecanismo de
+    // bloqueio (ativo=false), que já revoga sessões e preserva
+    // histórico/auditoria. A tag de auditoria fica INATIVAR_USUARIO,
+    // já que estruturalmente é a mesma operação; a intenção
+    // ("excluir") fica registrada na descrição.
+    await Core.usuariosEditar(loginAlvo, u?u.nome:'', u?u.perfil:'USUARIO', false);
+    showToast('✓ Usuário excluído.','success');
+    closeModal('modalUsuario');
+    await renderUsuariosPermissoes();
+  }catch(e){
+    console.error('[PATIO USERS ERROR]', {RPC:'patio_usuarios_editar (excluir)', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
+    showToast(mensagemAmigavel(e, 'Não foi possível excluir o usuário. Tente novamente.'), 'error');
+  }finally{ restaurar(); }
+}
+
+
+function abrirModalMinhaSenha(){
+  document.getElementById('msSenhaAtual').value='';
+  document.getElementById('msNovaSenha').value='';
+  document.getElementById('msConfirmarNovaSenha').value='';
+  openModal('modalMinhaSenha');
+}
+
+async function salvarMinhaSenha(){
+  const senhaAtual=document.getElementById('msSenhaAtual').value;
+  const novaSenha=document.getElementById('msNovaSenha').value;
+  const confirmar=document.getElementById('msConfirmarNovaSenha').value;
+  if(!senhaAtual){ showToast('Informe a senha atual.','error'); return; }
+  if(!novaSenha||novaSenha.length<6){ showToast('A nova senha deve ter pelo menos 6 caracteres.','error'); return; }
+  if(novaSenha!==confirmar){ showToast('As senhas não coincidem.','error'); return; }
+  if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
+
+  const restaurar=_protegerBotao('btnSalvarMinhaSenha','Salvando...');
+  try{
+    const senhaAtualHash=await hashSenha(senhaAtual);
+    const novaSenhaHash=await hashSenha(novaSenha);
+    await Core.usuariosAlterarMinhaSenha(senhaAtualHash, novaSenhaHash);
+    showToast('✓ Senha alterada com sucesso.','success');
+    closeModal('modalMinhaSenha');
+  }catch(e){
+    console.error('[PATIO USERS ERROR]', {RPC:'patio_usuarios_alterar_minha_senha', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
+    showToast(mensagemAmigavel(e, 'Não foi possível alterar a senha. Tente novamente.'), 'error');
+  }finally{ restaurar(); }
 }
 
 
@@ -1468,6 +1549,36 @@ function _sessaoDesenvolvimentoLocal(){
     module_session_token: null,
     _dev: true,
   };
+}
+
+const CHAVE_SESSAO_PERSISTIDA = 'yalog_patio_module_session_token';
+
+// item 1 (Sprint 004): tenta revalidar uma sessão já existente antes
+// de exigir handoff novo — resolve F5 sem criar tabela/autenticação
+// paralela. Se não houver token salvo, ou se a revalidação falhar
+// (expirado, revogado, usuário bloqueado nesse meio tempo), limpa o
+// que estiver salvo e deixa o fluxo normal de handoff assumir.
+async function _tentarRecuperarSessaoPersistida(){
+  const tokenSalvo = sessionStorage.getItem(CHAVE_SESSAO_PERSISTIDA);
+  if(!tokenSalvo){ console.log('[SSO PATIO] nenhuma sessão persistida para recuperar (primeira entrada nesta aba).'); return 'sem-sessao-salva'; }
+  try{
+    if(typeof window.supabaseClient === 'undefined' || !window.supabaseClient){
+      console.error('[SSO PATIO ERROR] tentativa de recuperar sessão, mas o cliente Supabase não pôde ser inicializado.');
+      return 'failed';
+    }
+    console.log('[SSO PATIO] tentando recuperar sessão persistida (refresh) via validar_sessao_modulo...');
+    const {data,error} = await window.supabaseClient.rpc('validar_sessao_modulo',{p_token:tokenSalvo, p_modulo:'patio'});
+    if(error){ console.error('[SSO PATIO ERROR] validar_sessao_modulo retornou erro ao tentar recuperar sessão:', {code:error.code, message:error.message, details:error.details, hint:error.hint}); sessionStorage.removeItem(CHAVE_SESSAO_PERSISTIDA); return 'failed'; }
+    const identidade = Array.isArray(data)?(data[0]||null):data;
+    if(!identidade || !identidade.company_id){ console.log('[SSO PATIO] sessão persistida não é mais válida (expirada, revogada, ou usuário bloqueado) — voltando ao fluxo de handoff.'); sessionStorage.removeItem(CHAVE_SESSAO_PERSISTIDA); return 'invalida'; }
+    sessaoModulo = {
+      company_id: identidade.company_id, login: identidade.login,
+      nome: identidade.nome, perfil: identidade.perfil,
+      module_session_token: tokenSalvo, _dev:false,
+    };
+    console.log('[SSO PATIO] sessão recuperada com sucesso (refresh) — company_id:', identidade.company_id, '| perfil:', identidade.perfil);
+    return 'success';
+  }catch(e){ console.error('[SSO PATIO ERROR] erro inesperado ao recuperar sessão persistida:', e); sessionStorage.removeItem(CHAVE_SESSAO_PERSISTIDA); return 'failed'; }
 }
 
 async function _tentarSSOHandoffPatio(){
@@ -1497,6 +1608,9 @@ async function _tentarSSOHandoffPatio(){
       nome: identidade.nome, perfil: identidade.perfil,
       module_session_token: identidade.module_session_token, _dev:false,
     };
+    // item 1: persiste só o module_session_token (nunca o handoff, que
+    // já foi consumido) — é isso que um F5 vai poder recuperar depois.
+    try{ sessionStorage.setItem(CHAVE_SESSAO_PERSISTIDA, identidade.module_session_token); }catch(e){}
     console.log('[SSO DEBUG 11] sessão do módulo criada:', {company_id: sessaoModulo.company_id, login: sessaoModulo.login});
     console.log('[SSO DEBUG 12] SSO concluído.');
     return 'success';
@@ -1525,6 +1639,20 @@ async function iniciarSessaoModulo(){
     console.log('[PATIO] modo de teste local — SSO desligado (MODO_SSO.EXIGIR=false). Sessão sintética:', sessaoModulo.company_id);
     return true;
   }
+
+  // item 1 (Sprint 004): F5/refresh não deve exigir handoff novo. O
+  // handoff é de uso único e sua URL some por segurança logo após o
+  // primeiro uso — então, num refresh, não sobra nada pra reusar ali.
+  // O que persiste é o module_session_token, guardado em
+  // sessionStorage (morre com a aba, nunca em localStorage — mais
+  // perto do comportamento de um cookie de sessão). Revalida contra
+  // validar_sessao_modulo, a MESMA RPC que já é usada internamente
+  // por toda RPC do módulo — nenhuma tabela nova, nenhuma
+  // autenticação paralela, a sessão continua inteiramente subordinada
+  // ao module_sessions do Ecosystem.
+  const resultadoRecuperado = await _tentarRecuperarSessaoPersistida();
+  if(resultadoRecuperado==='success') return true;
+
   const resultado = await _tentarSSOHandoffPatio();
   if(resultado==='success') return true;
   // item 6 (Sprint PATIO-001)/15 (Sprint 002B-R1): sem handoff válido,
@@ -1723,6 +1851,14 @@ const Core = {
     if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
     const {data,error} = await window.supabaseClient.rpc('patio_usuarios_alterar_senha', {
       p_session_token: sessaoModulo.module_session_token, p_login_alvo: loginAlvo, p_nova_senha_hash: novaSenhaHash,
+    });
+    if(error) throw error;
+    return !!data;
+  },
+  async usuariosAlterarMinhaSenha(senhaAtualHash, novaSenhaHash){
+    if(!this.ONLINE_DISPONIVEL()) throw new Error('SESSAO_INDISPONIVEL');
+    const {data,error} = await window.supabaseClient.rpc('patio_usuarios_alterar_minha_senha', {
+      p_session_token: sessaoModulo.module_session_token, p_senha_atual_hash: senhaAtualHash, p_nova_senha_hash: novaSenhaHash,
     });
     if(error) throw error;
     return !!data;
@@ -1971,6 +2107,20 @@ function temAcessoPagina(recurso){ return temAcessoRecurso(recurso,'VISUALIZAR')
 function podeVisualizar(recurso){ return temAcessoRecurso(recurso,'VISUALIZAR'); }
 function podeExecutar(recurso){ return temAcessoRecurso(recurso,'EXECUTAR'); }
 
+// item 11 (Sprint 004): nunca mostrar erro técnico ao usuário final —
+// mensagens que eu mesmo escrevo em RAISE EXCEPTION são sempre texto
+// amigável em português (ex.: "Já existe um usuário com este login"),
+// seguras de exibir. Qualquer coisa com cara de erro técnico (nome de
+// relação/coluna, "syntax error", código bruto) vira mensagem
+// genérica — o console sempre recebe o detalhe completo, a tela nunca.
+function mensagemAmigavel(e, generica){
+  const msg = e && e.message;
+  if(msg==='SESSAO_INDISPONIVEL') return 'Não foi possível validar sua sessão YALog.';
+  if(!msg) return generica;
+  const pareceTecnico = /relation|column|syntax error|does not exist|SQLSTATE|constraint|violat/i.test(msg);
+  return pareceTecnico ? generica : msg;
+}
+
 // item 6/17/18 (Sprint 003-R1): fonte única que decide o que aparece
 // no menu — OCULTAR esconde o item por completo (não é só o gate de
 // goTo(), que bloqueia navegação; o item nem deve aparecer clicável).
@@ -2189,7 +2339,7 @@ async function renderUsuariosPermissoes(){
       <td>${u.nome}</td>
       <td style="font-family:var(--mono);font-size:12px;">${u.login}</td>
       <td>${u.perfil}</td>
-      <td>${u.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge" style="background:rgba(255,255,255,.06);color:var(--w40);">Inativo</span>'}</td>
+      <td>${u.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge" style="background:rgba(255,255,255,.06);color:var(--w40);">Bloqueado</span>'}</td>
       <td style="white-space:nowrap;">
         ${podeExecutar('usuarios')?`<button class="btn btn-outline btn-sm" onclick="abrirModalUsuario('${u.login}')">Editar</button>`:''}
       </td>
@@ -2204,6 +2354,19 @@ function toggleMostrarSenha(idCampo, botao){
 }
 function mostrarBlocoAlterarSenha(){
   document.getElementById('usBlocoNovaSenha').style.display='block';
+}
+
+function gerarSenhaTemporaria(){
+  // item 6: legível o suficiente pra passar por telefone/mensagem —
+  // 3 blocos alfanuméricos, evitando caracteres ambíguos (0/O, 1/l/I).
+  const alfabeto='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const bloco=()=>Array.from({length:4},()=>alfabeto[Math.floor(Math.random()*alfabeto.length)]).join('');
+  const senha=`${bloco()}-${bloco()}`;
+  document.getElementById('usBlocoNovaSenha').style.display='block';
+  document.getElementById('usNovaSenha').value=senha;
+  document.getElementById('usConfirmarNovaSenha').value=senha;
+  document.getElementById('usSenhaTemporariaTexto').textContent=senha;
+  document.getElementById('usSenhaTemporariaAviso').style.display='block';
 }
 
 function abrirModalUsuario(loginParaEditar){
@@ -2235,6 +2398,7 @@ function abrirModalUsuario(loginParaEditar){
     // nome/perfil/status.
     document.getElementById('usSenhaWrap').style.display='none';
     document.getElementById('usAlterarSenhaWrap').style.display='block';
+    document.getElementById('usExcluirWrap').style.display='block';
     // item 10: mostra o estado EFETIVO real (override quando existir,
     // não só o padrão do perfil) — busca no servidor.
     renderMatrizPermissoesModal(loginParaEditar);
@@ -2242,6 +2406,7 @@ function abrirModalUsuario(loginParaEditar){
     document.getElementById('modalUsuarioTitulo').textContent='Novo Usuário';
     document.getElementById('usSenhaWrap').style.display='block';
     document.getElementById('usAlterarSenhaWrap').style.display='none';
+    document.getElementById('usExcluirWrap').style.display='none';
     // item 6: ao abrir pra criar, carrega a matriz padrão do perfil
     // já pré-selecionado no combo (USUARIO).
     renderMatrizPermissoesModal(null);
@@ -2370,7 +2535,7 @@ async function salvarUsuario(){
     await renderUsuariosPermissoes();
   }catch(e){
     console.error('[PATIO USERS ERROR]', {RPC: loginOriginal?'patio_usuarios_editar':'patio_usuarios_criar', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
-    showToast(e.message==='SESSAO_INDISPONIVEL' ? 'Não foi possível validar a sessão YALog.' : (e.message||'Não foi possível salvar a operação.'), 'error');
+    showToast(mensagemAmigavel(e, 'Não foi possível salvar o usuário. Tente novamente.'), 'error');
   }finally{ restaurar(); }
 }
 
