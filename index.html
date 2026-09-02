@@ -1178,9 +1178,6 @@ body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:
             </table>
           </div>
         </div>
-        <div id="usExcluirWrap" style="display:none;border-top:1px solid var(--border2);margin-top:16px;padding-top:16px;">
-          <button class="btn btn-danger btn-sm" onclick="excluirUsuario()">Excluir usuário</button>
-        </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-outline btn-sm" onclick="closeModal('modalUsuario')">Cancelar</button>
           <button class="btn btn-primary btn-sm" id="btnSalvarUsuario" onclick="salvarUsuario()">Salvar</button>
@@ -1483,28 +1480,39 @@ async function sair(){
 }
 
 
-async function excluirUsuario(){
-  const loginAlvo=document.getElementById('usLoginOriginal').value;
-  if(!loginAlvo) return;
-  if(!confirm('Tem certeza que deseja excluir este usuário?')) return;
-  if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
-
+// item 3 (Sprint ONLINE-003-R2): ação direta na linha, sem abrir
+// modal — confirmação simples pra bloquear/desbloquear.
+async function toggleBloqueioUsuarioLinha(loginAlvo){
   const u=_usuariosCache.find(x=>x.login===loginAlvo);
-  const restaurar=_protegerBotao('btnSalvarUsuario','Excluindo...');
+  if(!u) return;
+  const vaiBloquear = u.ativo!==false;
+  if(!confirm(vaiBloquear ? 'Bloquear este usuário?' : 'Desbloquear este usuário?')) return;
+  if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
   try{
-    // item 5: exclusão lógica, não DELETE físico — mesmo mecanismo de
-    // bloqueio (ativo=false), que já revoga sessões e preserva
-    // histórico/auditoria. A tag de auditoria fica INATIVAR_USUARIO,
-    // já que estruturalmente é a mesma operação; a intenção
-    // ("excluir") fica registrada na descrição.
-    await Core.usuariosEditar(loginAlvo, u?u.nome:'', u?u.perfil:'USUARIO', false);
+    await Core.usuariosEditar(loginAlvo, u.nome, u.perfil, !vaiBloquear);
+    showToast(vaiBloquear ? 'Usuário bloqueado com sucesso.' : 'Usuário desbloqueado com sucesso.', 'success');
+    await renderUsuariosPermissoes();
+  }catch(e){
+    console.error('[PATIO USERS ERROR]', {RPC:'patio_usuarios_editar (bloqueio)', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
+    showToast(mensagemAmigavel(e, 'Não foi possível alterar o status do usuário. Tente novamente.'), 'error');
+  }
+}
+
+// item 5: confirmação forte, exclusão lógica (sem DELETE físico —
+// mesmo mecanismo de bloqueio, preserva histórico/auditoria).
+async function excluirUsuarioLinha(loginAlvo){
+  const u=_usuariosCache.find(x=>x.login===loginAlvo);
+  if(!u) return;
+  if(!confirm('Tem certeza que deseja excluir este usuário? Esta ação não poderá ser desfeita.')) return;
+  if(!Core.ONLINE_DISPONIVEL()){ showToast('Não foi possível salvar a operação. A conexão com o YALog/Supabase não está disponível.','error'); return; }
+  try{
+    await Core.usuariosEditar(loginAlvo, u.nome, u.perfil, false);
     showToast('✓ Usuário excluído.','success');
-    closeModal('modalUsuario');
     await renderUsuariosPermissoes();
   }catch(e){
     console.error('[PATIO USERS ERROR]', {RPC:'patio_usuarios_editar (excluir)', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
     showToast(mensagemAmigavel(e, 'Não foi possível excluir o usuário. Tente novamente.'), 'error');
-  }finally{ restaurar(); }
+  }
 }
 
 
@@ -2114,11 +2122,33 @@ function podeExecutar(recurso){ return temAcessoRecurso(recurso,'EXECUTAR'); }
 // relação/coluna, "syntax error", código bruto) vira mensagem
 // genérica — o console sempre recebe o detalhe completo, a tela nunca.
 function mensagemAmigavel(e, generica){
-  const msg = e && e.message;
+  const msg = String(e && e.message || '').trim();
+  const details = String(e && e.details || '').trim();
+  const hint = String(e && e.hint || '').trim();
+
   if(msg==='SESSAO_INDISPONIVEL') return 'Não foi possível validar sua sessão YALog.';
   if(!msg) return generica;
-  const pareceTecnico = /relation|column|syntax error|does not exist|SQLSTATE|constraint|violat/i.test(msg);
-  return pareceTecnico ? generica : msg;
+
+  const conhecidos = {
+    'ACESSO_NEGADO_SOMENTE_MASTER':'Apenas um usuário MASTER pode cadastrar usuários.',
+    'MASTER_NAO_PODE_REBAIXAR_A_SI_MESMO':'O usuário MASTER não pode rebaixar o próprio perfil.',
+    'MASTER_NAO_PODE_DESATIVAR_A_SI_MESMO':'O usuário MASTER não pode desativar o próprio acesso.',
+    'USUARIO_JA_EXISTE':'USUARIO_JA_EXISTE — já existe um usuário com este login nesta empresa.',
+    'USUARIO_JA_VINCULADO_AO_PATIO':'USUARIO_JA_VINCULADO_AO_PATIO — este login já está vinculado ao Gestão de Pátio.',
+    'DADOS_INVALIDOS':'Dados inválidos. Confira login, perfil e senha.',
+    'LOGIN_OBRIGATORIO':'Login é obrigatório.',
+    'NOME_OBRIGATORIO':'Nome é obrigatório.',
+    'PERFIL_INVALIDO':'Perfil inválido.',
+    'SENHA_OBRIGATORIA':'Senha é obrigatória.',
+    'HASH_INVALIDO':'A senha informada é inválida.',
+    'SESSAO_INVALIDA_OU_EXPIRADA':'Sessão inválida ou expirada.'
+  };
+
+  if(Object.prototype.hasOwnProperty.call(conhecidos,msg)) return conhecidos[msg];
+
+  // Não mascarar erro técnico: exibir message/details/hint retornados pelo Supabase.
+  const tecnico = [msg, details, hint].filter(Boolean).join(' | ');
+  return tecnico || generica;
 }
 
 // item 6/17/18 (Sprint 003-R1): fonte única que decide o que aparece
@@ -2341,7 +2371,11 @@ async function renderUsuariosPermissoes(){
       <td>${u.perfil}</td>
       <td>${u.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge" style="background:rgba(255,255,255,.06);color:var(--w40);">Bloqueado</span>'}</td>
       <td style="white-space:nowrap;">
-        ${podeExecutar('usuarios')?`<button class="btn btn-outline btn-sm" onclick="abrirModalUsuario('${u.login}')">Editar</button>`:''}
+        ${podeExecutar('usuarios')?`
+        <button class="btn btn-outline btn-sm" onclick="abrirModalUsuario('${u.login}')" title="Editar">Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleBloqueioUsuarioLinha('${u.login}')" title="${u.ativo?'Bloquear':'Desbloquear'}">${u.ativo?'🔒':'🔓'}</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirUsuarioLinha('${u.login}')" title="Excluir">🗑</button>
+        `:''}
       </td>
     </tr>`).join('');
 }
@@ -2398,7 +2432,6 @@ function abrirModalUsuario(loginParaEditar){
     // nome/perfil/status.
     document.getElementById('usSenhaWrap').style.display='none';
     document.getElementById('usAlterarSenhaWrap').style.display='block';
-    document.getElementById('usExcluirWrap').style.display='block';
     // item 10: mostra o estado EFETIVO real (override quando existir,
     // não só o padrão do perfil) — busca no servidor.
     renderMatrizPermissoesModal(loginParaEditar);
@@ -2406,7 +2439,6 @@ function abrirModalUsuario(loginParaEditar){
     document.getElementById('modalUsuarioTitulo').textContent='Novo Usuário';
     document.getElementById('usSenhaWrap').style.display='block';
     document.getElementById('usAlterarSenhaWrap').style.display='none';
-    document.getElementById('usExcluirWrap').style.display='none';
     // item 6: ao abrir pra criar, carrega a matriz padrão do perfil
     // já pré-selecionado no combo (USUARIO).
     renderMatrizPermissoesModal(null);
@@ -2497,8 +2529,12 @@ async function salvarUsuario(){
 
   const matriz=_lerMatrizPermissoesModal();
   const restaurar=_protegerBotao('btnSalvarUsuario','Salvando...');
+  let loginFinal=loginOriginal;
+
+  // ETAPA 1: identidade (criar ou editar) + senha, se aplicável —
+  // separada da etapa de permissões, com sua própria mensagem, pra
+  // nunca mascarar qual das duas realmente falhou.
   try{
-    let loginFinal=loginOriginal;
     if(loginOriginal){
       const ativo=document.getElementById('usAtivo').value==='true';
       await Core.usuariosEditar(loginOriginal, nome, perfil, ativo);
@@ -2507,7 +2543,17 @@ async function salvarUsuario(){
       await Core.usuariosCriar(login, nome, perfil, senhaHash);
       loginFinal=login;
     }
+  }catch(e){
+    console.error('[PATIO USERS ERROR]', {RPC: loginOriginal?'patio_usuarios_editar':'patio_usuarios_criar', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
+    showToast(mensagemAmigavel(e, loginOriginal ? 'Não foi possível atualizar os dados do usuário. Tente novamente.' : 'Não foi possível cadastrar o usuário. Tente novamente.'), 'error');
+    restaurar();
+    return;
+  }
 
+  // ETAPA 2: permissões — só chega aqui se a etapa 1 já confirmou
+  // sucesso. Continua sequencial (uma chamada por recurso, sem RPC
+  // transacional única, mesma decisão já documentada antes).
+  try{
     // item 7: salva a matriz junto — sequencial (uma chamada por
     // recurso). NÃO é transacional com a criação/edição do usuário
     // acima: não existe hoje uma RPC única que faça as duas coisas
@@ -2534,8 +2580,11 @@ async function salvarUsuario(){
     closeModal('modalUsuario');
     await renderUsuariosPermissoes();
   }catch(e){
-    console.error('[PATIO USERS ERROR]', {RPC: loginOriginal?'patio_usuarios_editar':'patio_usuarios_criar', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
-    showToast(mensagemAmigavel(e, 'Não foi possível salvar o usuário. Tente novamente.'), 'error');
+    // chegou aqui só se algo falhar DEPOIS da etapa de permissões
+    // (ex.: recarregar a lista) — a etapa 1 (identidade) já tem seu
+    // próprio catch acima e nunca chega até aqui.
+    console.error('[PATIO USERS ERROR]', {etapa:'pós-permissões', code:e&&e.code, message:e&&e.message, details:e&&e.details, hint:e&&e.hint, erroCompleto:e});
+    showToast(mensagemAmigavel(e, 'Usuário e permissões foram salvos, mas houve um problema ao atualizar a tela. Recarregue a página.'), 'error');
   }finally{ restaurar(); }
 }
 
